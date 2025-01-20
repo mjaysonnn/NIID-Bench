@@ -4,7 +4,7 @@ model="vgg"
 partition="noniid-labeldir"
 beta=0.1
 
-for alg in scaffold fedavg
+for alg in fedavg
 do
     python experiments.py --model=$model \
         --dataset=cifar10 \
