@@ -1,5 +1,8 @@
 conda create -n old_env python=3.7 -y
+
+
 conda activate old_env
+
 pip install -r requirements.txt --no-input
 pip install --upgrade torchvision --no-input
 
