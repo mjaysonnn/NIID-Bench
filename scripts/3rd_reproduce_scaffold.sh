@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for partition in noniid-labeldir
+for partition in homo
 do
     for alg in scaffold
     do
@@ -17,8 +17,8 @@ do
             --beta=0.5 \
             --device='cuda:0' \
             --datadir='./data/' \
-            --logdir="./logs/$alg/" \
-            --noise=0 \
+            --logdir="./logs/simple-cnn/$alg/" \
+            --noise=0.1 \
             --sample=1.0 \
             --init_seed=0
     done
