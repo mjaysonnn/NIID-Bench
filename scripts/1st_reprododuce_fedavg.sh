@@ -2,7 +2,7 @@
 
 for partition in noniid-labeldir
 do
-    for alg in fedavg scaffold
+    for alg in fedavg
     do
         python experiments.py --model=simple-cnn \
             --dataset=cifar10 \
@@ -17,10 +17,9 @@ do
             --beta=0.5 \
             --device='cuda:0' \
             --datadir='./data/' \
-            --logdir="./logs/${alg}" \
+            --logdir="./logs/$alg/" \
             --noise=0 \
             --sample=1.0 \
-            --init_seed=0 &
-        sleep 10  # Add a 10-second delay between launches
+            --init_seed=0
     done
 done
