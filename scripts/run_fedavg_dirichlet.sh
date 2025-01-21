@@ -6,7 +6,7 @@ DATASET="cifar10"
 LR=0.01
 BATCH_SIZE=64
 EPOCHS=10
-N_PARTIES=20
+N_PARTIES=25  # Total number of clients
 RHO=0.9
 COMM_ROUNDS=50
 BETA=0.5
@@ -14,8 +14,23 @@ DEVICE="cuda:0"
 DATADIR="./data/"
 LOGDIR_BASE="./logs"
 NOISE=0
-SAMPLE=1.0
 INIT_SEED=0
+
+# Input: Number of clients for P and Q
+NUM_CLIENTS_P=20  # Number of regular clients
+NUM_CLIENTS_Q=5   # Number of partial update clients
+
+# Calculate proportions
+P=$(echo "$NUM_CLIENTS_P / $N_PARTIES" | bc -l)  # Fraction of regular clients
+Q=$(echo "$NUM_CLIENTS_Q / $N_PARTIES" | bc -l)  # Fraction of partial update clients
+SAMPLE=$(echo "$P + $Q" | bc)  # Total participation ratio
+
+echo "Total clients: $N_PARTIES"
+echo "Number of regular clients (P): $NUM_CLIENTS_P"
+echo "Number of partial update clients (Q): $NUM_CLIENTS_Q"
+echo "Proportion of regular clients (P): $P"
+echo "Proportion of partial update clients (Q): $Q"
+echo "Client participation rate (SAMPLE): $SAMPLE"
 
 # Loop through partitions and algorithms
 for PARTITION in noniid-labeldir
@@ -43,6 +58,8 @@ do
             --logdir=$LOGDIR \
             --noise=$NOISE \
             --sample=$SAMPLE \
-            --init_seed=$INIT_SEED
+            --init_seed=$INIT_SEED \
+            --p $P \
+            --q $Q
     done
 done

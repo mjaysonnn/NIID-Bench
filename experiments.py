@@ -55,6 +55,8 @@ def get_args():
     parser.add_argument('--noise_type', type=str, default='level', help='Different level of noise or different space of noise')
     parser.add_argument('--rho', type=float, default=0, help='Parameter controlling the momentum SGD')
     parser.add_argument('--sample', type=float, default=1, help='Sample ratio for each communication round')
+    parser.add_argument('--p', type=float, default=0.8, help="Proportion of regular clients")
+    parser.add_argument('--q', type=float, default=0.2, help="Proportion of clients doing partial updates")
     args = parser.parse_args()
     return args
 
@@ -311,42 +313,99 @@ def view_image(train_dataloader):
         exit(0)
 
 
-def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, device="cpu"):
-    avg_acc = 0.0
+def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device="cpu"):
+    """
+    Trains the local models for the selected clients.
 
+    Args:
+        nets (dict): Dictionary of client models.
+        selected (list): List of selected client indices for the current round.
+        args (Namespace): Arguments containing experiment configurations.
+        net_dataidx_map (dict): Mapping of client indices to their data indices.
+        test_dl (DataLoader): Test DataLoader for evaluation (optional).
+        device (str): Device to use for training (e.g., "cpu" or "cuda").
+
+    Returns:
+        list: List of updated client models.
+    """
+    avg_acc = 0.0  # Variable to store the average test accuracy.
+
+    # Determine the number of clients in `p` and `q` groups
+    num_clients_p = int(len(selected) * args.p)
+    num_clients_q = len(selected) - num_clients_p
+
+    # Randomly split the selected clients into `p` and `q` groups
+    np.random.shuffle(selected)
+    clients_p = selected[:num_clients_p]
+    clients_q = selected[num_clients_p:]
+
+    # Loop through each client model in the dictionary.
     for net_id, net in nets.items():
+        # Skip clients that are not selected for the current round.
         if net_id not in selected:
             continue
+
+        # Retrieve the data indices assigned to this client.
         dataidxs = net_dataidx_map[net_id]
 
+        # Log the training information for this client.
         logger.info("Training network %s. n_training: %d" % (str(net_id), len(dataidxs)))
-        # move the model to cuda device:
+
+        # Move the model to the specified device (e.g., GPU).
         net.to(device)
 
+        # Determine noise level for this client.
         noise_level = args.noise
-        if net_id == args.n_parties - 1:
+        if net_id == args.n_parties - 1:  # Special case for the last client.
             noise_level = 0
 
-        if args.noise_type == 'space':
-            train_dl_local, test_dl_local, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level, net_id, args.n_parties-1)
-        else:
+        # Get the DataLoader for this client's data with noise configuration.
+        if args.noise_type == 'space':  # If noise type is spatial.
+            train_dl_local, test_dl_local, _, _ = get_dataloader(
+                args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level, net_id, args.n_parties - 1
+            )
+        else:  # If noise type is level-based.
             noise_level = args.noise / (args.n_parties - 1) * net_id
-            train_dl_local, test_dl_local, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level)
-        train_dl_global, test_dl_global, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32)
-        n_epoch = args.epochs
+            train_dl_local, test_dl_local, _, _ = get_dataloader(
+                args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level
+            )
 
+        # Get global DataLoader for comparison or reference (if needed).
+        train_dl_global, test_dl_global, _, _ = get_dataloader(
+            args.dataset, args.datadir, args.batch_size, 32
+        )
 
-        trainacc, testacc = train_net(net_id, net, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, device=device)
+        def truncated_poisson(lam, min_val=1):
+            while True:
+                sample = np.random.poisson(lam)
+                if sample >= min_val:
+                    return sample
+        
+        # Determine the number of epochs for training.
+        if net_id in clients_q:  # Partial updates for clients in group `q`
+            n_epoch = min(truncated_poisson(args.epochs), args.epochs)
+            print("Client %d performing partial updates with %d epochs" % (net_id, n_epoch))
+        else:  # Full updates for clients in group `p`
+            n_epoch = args.epochs
+            print("Client %d performing full updates with %d epochs" % (net_id, n_epoch))
+
+        # Train the client's model and evaluate its performance.
+        trainacc, testacc = train_net(
+            net_id, net, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, device=device
+        )
         logger.info("net %d final test acc %f" % (net_id, testacc))
+
+        # Accumulate the test accuracy for averaging later.
         avg_acc += testacc
-        # saving the trained models here
-        # save_model(net, net_id, args)
-        # else:
-        #     load_model(net, net_id, device=device)
+
+    # Compute the average test accuracy across all selected clients.
     avg_acc /= len(selected)
+
+    # Log the average test accuracy if the algorithm is local training.
     if args.alg == 'local_training':
         logger.info("avg test acc %f" % avg_acc)
 
+    # Return the updated list of client models.
     nets_list = list(nets.values())
     return nets_list
 
@@ -423,100 +482,148 @@ def get_partition_dict(dataset, partition, n_parties, init_seed=0, datadir='./da
     return net_dataidx_map
 
 if __name__ == '__main__':
-    # torch.set_printoptions(profile="full")
-    args = get_args()
-    mkdirs(args.logdir)
-    mkdirs(args.modeldir)
-    if args.log_file_name is None:
-        argument_path='experiment_arguments-%s.json' % datetime.datetime.now().strftime("%Y-%m-%d-%H:%M-%S")
+    # Get the command-line arguments
+    args = get_args() 
+
+    # Create the log and model directories if they don't already exist
+    mkdirs(args.logdir) 
+    mkdirs(args.modeldir) 
+
+    # Save the experiment arguments to the log directory for reference
+    if args.log_file_name is None: 
+        argument_path = 'experiment_arguments-%s.json' % datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     else:
-        argument_path=args.log_file_name+'.json'
+        argument_path = args.log_file_name + '.json'        
     with open(os.path.join(args.logdir, argument_path), 'w') as f:
         json.dump(str(args), f)
-    device = torch.device(args.device)
-    # logging.basicConfig(filename='test.log', level=logger.info, filemode='w')
-    # logging.info("test")
-    for handler in logging.root.handlers[:]:
+            
+    # Set the device (e.g., 'cuda:0' for GPU or 'cpu')
+    device = torch.device(args.device) 
+
+    # Set up the logger to log experiment details to a file
+    for handler in logging.root.handlers[:]: 
         logging.root.removeHandler(handler)
 
-    if args.log_file_name is None:
-        args.log_file_name = 'experiment_log-%s' % (datetime.datetime.now().strftime("%Y-%m-%d-%H:%M-%S"))
-    log_path=args.log_file_name+'.log'
-    logging.basicConfig(
-        filename=os.path.join(args.logdir, log_path),
-        # filename='/home/qinbin/test.log',
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        datefmt='%m-%d %H:%M', level=logging.DEBUG, filemode='w')
+    # Define the log file name if not provided
+    if args.log_file_name is None: 
+        args.log_file_name = 'experiment_log-%s' % (datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S"))        
+    log_path = args.log_file_name + '.log' 
 
-    logger = logging.getLogger()
+    # Configure logging settings
+    logging.basicConfig( 
+        filename=os.path.join(args.logdir, log_path),  # Log file path
+        format='%(asctime)s %(levelname)-8s %(message)s',  # Log format
+        datefmt='%m-%d %H:%M',  # Date and time format
+        level=logging.DEBUG,  # Logging level
+        filemode='w'  # Overwrite existing log file
+    )
+    logger = logging.getLogger() 
     logger.setLevel(logging.DEBUG)
     logger.info(device)
 
-    seed = args.init_seed
-    logger.info("#" * 100)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    random.seed(seed)
+    # Set the random seed for reproducibility
+    seed = args.init_seed 
+    logger.info("#" * 100)  # Log a separator for better readability
+    np.random.seed(seed)  # Set seed for NumPy
+    torch.manual_seed(seed)  # Set seed for PyTorch
+    random.seed(seed)  # Set seed for Python's random module
+        
+    # Partition the dataset according to the specified strategy
     logger.info("Partitioning data")
     X_train, y_train, X_test, y_test, net_dataidx_map, traindata_cls_counts = partition_data(
-        args.dataset, args.datadir, args.logdir, args.partition, args.n_parties, beta=args.beta)
+        args.dataset, args.datadir, args.logdir, args.partition, args.n_parties, beta=args.beta
+    )
 
+    # Determine the number of classes in the dataset
     n_classes = len(np.unique(y_train))
 
-    train_dl_global, test_dl_global, train_ds_global, test_ds_global = get_dataloader(args.dataset,
-                                                                                        args.datadir,
-                                                                                        args.batch_size,
-                                                                                        32)
+    # Get dataloaders for the global model (training and testing)
+    train_dl_global, test_dl_global, train_ds_global, test_ds_global = get_dataloader(
+        args.dataset,  # Dataset name (e.g., cifar10, mnist)
+        args.datadir,  # Directory where data is stored
+        args.batch_size,  # Batch size for loading data
+        32  # Additional argument for the dataloader (e.g., shuffle buffer size)
+    )
+    print("len train_dl_global:", len(train_ds_global))  # Print the size of the global training dataset
+    data_size = len(test_ds_global)  # Determine the size of the global testing dataset
 
-    print("len train_dl_global:", len(train_ds_global))
-
-
-    data_size = len(test_ds_global)
-
-    # test_dl = data.DataLoader(dataset=test_ds_global, batch_size=32, shuffle=False)
-
+    # Initialize lists to collect datasets for training and testing across all parties
     train_all_in_list = []
     test_all_in_list = []
+
+    # Check if noise is applied to the data
     if args.noise > 0:
+        # Loop through each party (client) in the federated learning setup
         for party_id in range(args.n_parties):
+            # Get the indices of the data samples assigned to this party
             dataidxs = net_dataidx_map[party_id]
 
+            # Set the noise level for this party
             noise_level = args.noise
+            # If this is the last party, no noise is added (noise level = 0)
             if party_id == args.n_parties - 1:
                 noise_level = 0
 
+            # Handle different types of noise
             if args.noise_type == 'space':
-                train_dl_local, test_dl_local, train_ds_local, test_ds_local = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level, party_id, args.n_parties-1)
+                # If noise type is 'space', apply noise differently based on the party
+                train_dl_local, test_dl_local, train_ds_local, test_ds_local = get_dataloader(
+                    args.dataset, args.datadir, args.batch_size, 32, dataidxs, 
+                    noise_level, party_id, args.n_parties - 1
+                )
             else:
+                # Otherwise, distribute noise proportionally among parties
                 noise_level = args.noise / (args.n_parties - 1) * party_id
-                train_dl_local, test_dl_local, train_ds_local, test_ds_local = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level)
+                train_dl_local, test_dl_local, train_ds_local, test_ds_local = get_dataloader(
+                    args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level
+                )
+            
+            # Collect the training and testing datasets for this party
             train_all_in_list.append(train_ds_local)
             test_all_in_list.append(test_ds_local)
+
+        # Combine the training datasets from all parties into a single dataset
         train_all_in_ds = data.ConcatDataset(train_all_in_list)
+        # Create a DataLoader for the combined training dataset, with shuffling enabled
         train_dl_global = data.DataLoader(dataset=train_all_in_ds, batch_size=args.batch_size, shuffle=True)
+
+        # Combine the testing datasets from all parties into a single dataset
         test_all_in_ds = data.ConcatDataset(test_all_in_list)
+        # Create a DataLoader for the combined testing dataset, with shuffling disabled
         test_dl_global = data.DataLoader(dataset=test_all_in_ds, batch_size=32, shuffle=False)
 
 
 
     if args.alg == 'fedavg':
+        # Log the start of FedAvg algorithm initialization
         logger.info("Initializing nets")
+        
+        # Initialize local models (nets) and metadata for all parties
         nets, local_model_meta_data, layer_type = init_nets(args.net_config, args.dropout_p, args.n_parties, args)
+        
+        # Initialize the global model (shared among all parties)
         global_models, global_model_meta_data, global_layer_type = init_nets(args.net_config, 0, 1, args)
         global_model = global_models[0]
 
+        # Retrieve the global model's parameters
         global_para = global_model.state_dict()
+
+        # If all local models should start with the same parameters as the global model
         if args.is_same_initial:
             for net_id, net in nets.items():
                 net.load_state_dict(global_para)
 
+        # Main communication rounds loop
         for round in range(args.comm_round):
+            # Log the current communication round
             logger.info("in comm round:" + str(round))
 
+            # Randomly select a subset of parties for this communication round
             arr = np.arange(args.n_parties)
             np.random.shuffle(arr)
             selected = arr[:int(args.n_parties * args.sample)]
 
+            # Load the global model parameters into the selected local models
             global_para = global_model.state_dict()
             if round == 0:
                 if args.is_same_initial:
@@ -526,13 +633,14 @@ if __name__ == '__main__':
                 for idx in selected:
                     nets[idx].load_state_dict(global_para)
 
-            local_train_net(nets, selected, args, net_dataidx_map, test_dl = test_dl_global, device=device)
-            # local_train_net(nets, args, net_dataidx_map, local_split=False, device=device)
+            # Train the selected local models
+            local_train_net(nets, selected, args, net_dataidx_map, test_dl=test_dl_global, device=device)
 
-            # update global model
+            # Aggregate local updates to update the global model using Federated Averaging
             total_data_points = sum([len(net_dataidx_map[r]) for r in selected])
             fed_avg_freqs = [len(net_dataidx_map[r]) / total_data_points for r in selected]
 
+            # Compute the weighted average of the selected local model parameters
             for idx in range(len(selected)):
                 net_para = nets[selected[idx]].cpu().state_dict()
                 if idx == 0:
@@ -541,16 +649,20 @@ if __name__ == '__main__':
                 else:
                     for key in net_para:
                         global_para[key] += net_para[key] * fed_avg_freqs[idx]
+            
+            # Update the global model with the aggregated parameters
             global_model.load_state_dict(global_para)
 
+            # Log dataset statistics for debugging
             logger.info('global n_training: %d' % len(train_dl_global))
             logger.info('global n_test: %d' % len(test_dl_global))
 
+            # Evaluate the global model's performance on the training and test datasets
             global_model.to(device)
             train_acc = compute_accuracy(global_model, train_dl_global, device=device)
             test_acc, conf_matrix = compute_accuracy(global_model, test_dl_global, get_confusion_matrix=True, device=device)
 
-
+            # Log the global model's training and test accuracy for the current round
             logger.info('>> Global Model Train accuracy: %f' % train_acc)
             logger.info('>> Global Model Test accuracy: %f' % test_acc)
 
