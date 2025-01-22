@@ -333,13 +333,14 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device=
     total_clients = len(selected)  # Number of selected clients.
 
     # Determine the number of clients in `p` and `q` groups
-    num_clients_p = int(len(selected) * args.p)
-    num_clients_q = len(selected) - num_clients_p
+    num_clients_p = int(args.n_parties * args.p)
+    num_clients_q = int(args.n_parties * args.q)
 
     # Randomly split the selected clients into `p` and `q` groups
     np.random.shuffle(selected)
     clients_p = selected[:num_clients_p]
     clients_q = selected[num_clients_p:]
+    print("Number of total clients: %d" % total_clients)
     print("Number of clients in group `p`: %d" % len(clients_p))
     print("Number of clients in group `q`: %d" % len(clients_q))
     
