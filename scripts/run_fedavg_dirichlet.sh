@@ -1,24 +1,29 @@
 #!/bin/bash
 
-# Define variables for common parameters
+# Communication rounds
+COMM_ROUNDS=50
+
+# Local epochs
+EPOCHS=10
+
+# Dirichlet distribution parameters
+BETA=0.5 
+
+# Client Variables
+N_PARTIES=25  # Total number of clients
+NUM_CLIENTS_P=20  # Number of regular clients
+NUM_CLIENTS_Q=5   # Number of partial update clients
+
 MODEL="simple-cnn"
 DATASET="cifar10"
 LR=0.01
 BATCH_SIZE=64
-EPOCHS=10
-N_PARTIES=25  # Total number of clients
 RHO=0.9
-COMM_ROUNDS=50
-BETA=0.5
 DEVICE="cuda:0"
 DATADIR="./data/"
 LOGDIR_BASE="./logs"
 NOISE=0
 INIT_SEED=0
-
-# Input: Number of clients for P and Q
-NUM_CLIENTS_P=20  # Number of regular clients
-NUM_CLIENTS_Q=5   # Number of partial update clients
 
 # Calculate proportions
 P=$(echo "$NUM_CLIENTS_P / $N_PARTIES" | bc -l)  # Fraction of regular clients
