@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Client Variables
+N_PARTIES=25  # Total number of clients
+NUM_CLIENTS_P=20  # Number of regular clients
+NUM_CLIENTS_Q=5   # Number of partial update clients
+
 # Communication rounds
 COMM_ROUNDS=50
 
@@ -9,10 +14,7 @@ EPOCHS=10
 # Dirichlet distribution parameters
 BETA=0.5 
 
-# Client Variables
-N_PARTIES=25  # Total number of clients
-NUM_CLIENTS_P=20  # Number of regular clients
-NUM_CLIENTS_Q=5   # Number of partial update clients
+
 
 MODEL="simple-cnn"
 DATASET="cifar10"
