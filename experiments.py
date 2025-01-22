@@ -220,7 +220,7 @@ def train_net(net_id, net, train_dataloader, test_dataloader, epochs, lr, args_o
     # Move model back to CPU and log completion
     net.to('cpu')
     logger.info(' ** Training complete **')
-    return train_acc, test_acc
+    return train_acc, test_acc, avg_training_loss
 
 
 def train_net_scaffold(net_id, net, global_model, c_local, c_global, train_dataloader, test_dataloader, epochs, lr, args_optimizer, device="cpu"):
@@ -315,7 +315,7 @@ def view_image(train_dataloader):
 
 def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device="cpu"):
     """
-    Trains the local models for the selected clients.
+    Trains the local models for the selected clients and computes average metrics across clients.
 
     Args:
         nets (dict): Dictionary of client models.
@@ -329,6 +329,8 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device=
         list: List of updated client models.
     """
     avg_acc = 0.0  # Variable to store the average test accuracy.
+    total_train_loss = 0.0  # Variable to store the total training loss.
+    total_clients = len(selected)  # Number of selected clients.
 
     # Determine the number of clients in `p` and `q` groups
     num_clients_p = int(len(selected) * args.p)
@@ -392,20 +394,22 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device=
             print("Client %d performing full updates with %d epochs" % (net_id, n_epoch))
 
         # Train the client's model and evaluate its performance.
-        trainacc, testacc = train_net(
+        trainacc, testacc, train_loss = train_net(
             net_id, net, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, device=device
         )
         logger.info("net %d final test acc %f" % (net_id, testacc))
 
-        # Accumulate the test accuracy for averaging later.
+        # Accumulate metrics for averaging later.
         avg_acc += testacc
+        total_train_loss += train_loss
 
-    # Compute the average test accuracy across all selected clients.
-    avg_acc /= len(selected)
+    # Compute the average metrics across all selected clients.
+    avg_acc /= total_clients
+    avg_train_loss = total_train_loss / total_clients
 
-    # Log the average test accuracy if the algorithm is local training.
-    if args.alg == 'local_training':
-        logger.info("avg test acc %f" % avg_acc)
+    # Log the average metrics.
+    logger.info("Round Average Training Loss: %f" % avg_train_loss)
+    logger.info("Round Average Test Accuracy: %f" % avg_acc)
 
     # Return the updated list of client models.
     nets_list = list(nets.values())
