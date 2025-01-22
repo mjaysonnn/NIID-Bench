@@ -340,7 +340,7 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device=
     np.random.shuffle(selected)
     clients_p = selected[:num_clients_p]
     clients_q = selected[num_clients_p:]
-    print("Number of total clients: %d" % total_clients)
+    print("Number of participating clients: %d" % total_clients)
     print("Number of clients in group `p`: %d" % len(clients_p))
     print("Number of clients in group `q`: %d" % len(clients_q))
     
