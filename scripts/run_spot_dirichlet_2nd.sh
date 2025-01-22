@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Client Variables
-N_PARTIES=25  # Total number of clients
+N_PARTIES=30  # Total number of clients
 NUM_CLIENTS_P=20  # Number of regular clients
-NUM_CLIENTS_Q=5   # Number of partial update clients
+NUM_CLIENTS_Q=10   # Number of partial update clients
 
 # Communication rounds
 COMM_ROUNDS=50
