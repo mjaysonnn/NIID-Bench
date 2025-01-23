@@ -3,22 +3,25 @@
 # Define variables for common parameters
 MODEL="simple-cnn"
 DATASET="cifar10"
-LR=0.01
-BATCH_SIZE=64
 EPOCHS=10
 N_PARTIES=100
+COMM_ROUNDS=500
+SAMPLE=0.1
+NOISE=0.1 # Homo noise
+BETA=0.5 # Dirichlet noise
+
+LR=0.01
+BATCH_SIZE=64
 RHO=0.9
-COMM_ROUNDS=250
-BETA=0.5
 DEVICE="cuda:0"
 DATADIR="./data/"
 LOGDIR_BASE="./logs"
-NOISE=0
-SAMPLE=0.2
 INIT_SEED=0
 
+
+
 # Loop through partitions and algorithms
-for PARTITION in noniid-labeldir
+for PARTITION in homo # noniid-labeldir, homo -> Update NOISE if using homo
 do
     for ALG in fedavg
     do
