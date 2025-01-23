@@ -226,19 +226,22 @@ def train_net(net_id, net, train_dataloader, test_dataloader, epochs, lr, args_o
 def train_net_scaffold(net_id, net, global_model, c_local, c_global, train_dataloader, test_dataloader, epochs, lr, args_optimizer, device="cpu"):
     logger.info('Training network %s' % str(net_id))
 
+    # Initial accuracy before training
     train_acc = compute_accuracy(net, train_dataloader, device=device)
     test_acc, conf_matrix = compute_accuracy(net, test_dataloader, get_confusion_matrix=True, device=device)
 
     logger.info('>> Pre-Training Training accuracy: {}'.format(train_acc))
     logger.info('>> Pre-Training Test accuracy: {}'.format(test_acc))
 
+    # Choose the optimizer
     if args_optimizer == 'adam':
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=args.reg)
     elif args_optimizer == 'amsgrad':
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=args.reg,
-                               amsgrad=True)
+        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=args.reg, amsgrad=True)
     elif args_optimizer == 'sgd':
         optimizer = optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, momentum=args.rho, weight_decay=args.reg)
+
+    # Define the loss function
     criterion = nn.CrossEntropyLoss().to(device)
 
     cnt = 0
@@ -256,12 +259,16 @@ def train_net_scaffold(net_id, net, global_model, c_local, c_global, train_datal
     c_global_para = c_global.state_dict()
     c_local_para = c_local.state_dict()
 
+    total_loss_collector = []  # To track total loss across all epochs
+
+    # Training loop
     for epoch in range(epochs):
         epoch_loss_collector = []
         for tmp in train_dataloader:
             for batch_idx, (x, target) in enumerate(tmp):
                 x, target = x.to(device), target.to(device)
 
+                # Zero gradients and forward pass
                 optimizer.zero_grad()
                 x.requires_grad = True
                 target.requires_grad = False
@@ -270,9 +277,11 @@ def train_net_scaffold(net_id, net, global_model, c_local, c_global, train_datal
                 out = net(x)
                 loss = criterion(out, target)
 
+                # Backward pass and optimizer step
                 loss.backward()
                 optimizer.step()
 
+                # Adjust model parameters for SCAFFOLD
                 net_para = net.state_dict()
                 for key in net_para:
                     net_para[key] = net_para[key] - args.lr * (c_global_para[key] - c_local_para[key])
@@ -281,29 +290,38 @@ def train_net_scaffold(net_id, net, global_model, c_local, c_global, train_datal
                 cnt += 1
                 epoch_loss_collector.append(loss.item())
 
-
+        # Calculate the average loss for this epoch
         epoch_loss = sum(epoch_loss_collector) / len(epoch_loss_collector)
+        total_loss_collector.append(epoch_loss)  # Collect epoch loss for averaging
         logger.info('Epoch: %d Loss: %f' % (epoch, epoch_loss))
 
+    # Calculate the average training loss across all epochs
+    avg_training_loss = sum(total_loss_collector) / len(total_loss_collector)
+    logger.info('>> Average Training Loss for Network %d: %f' % (net_id, avg_training_loss))
+
+    # Update control variates
     c_new_para = c_local.state_dict()
     c_delta_para = copy.deepcopy(c_local.state_dict())
     global_model_para = global_model.state_dict()
     net_para = net.state_dict()
+
     for key in net_para:
         c_new_para[key] = c_new_para[key] - c_global_para[key] + (global_model_para[key] - net_para[key]) / (cnt * args.lr)
         c_delta_para[key] = c_new_para[key] - c_local_para[key]
     c_local.load_state_dict(c_new_para)
 
-
+    # Final evaluation after training
     train_acc = compute_accuracy(net, train_dataloader, device=device)
     test_acc, conf_matrix = compute_accuracy(net, test_dataloader, get_confusion_matrix=True, device=device)
 
     logger.info('>> Training accuracy: %f' % train_acc)
     logger.info('>> Test accuracy: %f' % test_acc)
 
+    # Move the model back to CPU
     net.to('cpu')
     logger.info(' ** Training complete **')
-    return train_acc, test_acc, c_delta_para
+
+    return train_acc, test_acc, avg_training_loss, c_delta_para
 
 
 def view_image(train_dataloader):
@@ -417,49 +435,90 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device=
     return nets_list
 
 
-def local_train_net_scaffold(nets, selected, global_model, c_nets, c_global, args, net_dataidx_map, test_dl = None, device="cpu"):
-    avg_acc = 0.0
+def local_train_net_scaffold(nets, selected, global_model, c_nets, c_global, args, net_dataidx_map, test_dl=None, device="cpu"):
+    """
+    Trains local models for selected clients using SCAFFOLD, calculates average metrics, and updates global control variates.
 
-    total_delta = copy.deepcopy(global_model.state_dict())
+    Args:
+        nets (dict): Dictionary of client models.
+        selected (list): List of selected client indices for the current round.
+        global_model (torch.nn.Module): Global model.
+        c_nets (dict): Local control variates for each client.
+        c_global (torch.nn.Module): Global control variate.
+        args (Namespace): Experiment configuration arguments.
+        net_dataidx_map (dict): Mapping of client indices to their data indices.
+        test_dl (DataLoader): Test DataLoader for global evaluation (optional).
+        device (str): Device for computation ('cpu' or 'cuda').
+
+    Returns:
+        list: List of updated client models.
+    """
+    avg_acc = 0.0  # Variable to store average accuracy across clients.
+    total_train_loss = 0.0  # Variable to store total training loss across clients.
+    total_delta = copy.deepcopy(global_model.state_dict())  # Initialize delta for global control variates.
+
+    # Reset delta values to zero
     for key in total_delta:
         total_delta[key] = 0.0
+
+    # Move global model and control variates to the specified device
     c_global.to(device)
     global_model.to(device)
+
+    # Loop through selected client models for training
     for net_id, net in nets.items():
         if net_id not in selected:
             continue
+
+        # Get data indices for the current client
         dataidxs = net_dataidx_map[net_id]
-
         logger.info("Training network %s. n_training: %d" % (str(net_id), len(dataidxs)))
-        # move the model to cuda device:
-        net.to(device)
 
+        # Move the client model to the specified device
+        net.to(device)
         c_nets[net_id].to(device)
 
+        # Set noise level for the current client
         noise_level = args.noise
         if net_id == args.n_parties - 1:
             noise_level = 0
 
+        # Get the DataLoader for this client's data
         if args.noise_type == 'space':
-            train_dl_local, test_dl_local, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level, net_id, args.n_parties-1)
+            train_dl_local, test_dl_local, _, _ = get_dataloader(
+                args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level, net_id, args.n_parties - 1
+            )
         else:
             noise_level = args.noise / (args.n_parties - 1) * net_id
-            train_dl_local, test_dl_local, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level)
-        train_dl_global, test_dl_global, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32)
+            train_dl_local, test_dl_local, _, _ = get_dataloader(
+                args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level
+            )
+
+        # Number of local epochs
         n_epoch = args.epochs
 
+        # Train the client model using SCAFFOLD
+        trainacc, testacc, train_loss, c_delta_para = train_net_scaffold(
+            net_id, net, global_model, c_nets[net_id], c_global, train_dl_local, test_dl_local, n_epoch, args.lr, args.optimizer, device=device
+        )
 
-        trainacc, testacc, c_delta_para = train_net_scaffold(net_id, net, global_model, c_nets[net_id], c_global, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, device=device)
-
+        # Aggregate control variates
         c_nets[net_id].to('cpu')
         for key in total_delta:
             total_delta[key] += c_delta_para[key]
 
-
+        # Log the final test accuracy for the current client
         logger.info("net %d final test acc %f" % (net_id, testacc))
+
+        # Accumulate accuracy and training loss for averaging
         avg_acc += testacc
+        total_train_loss += train_loss
+
+    # Average the control variates across all selected clients
     for key in total_delta:
-        total_delta[key] /= args.n_parties
+        total_delta[key] /= len(selected)
+
+    # Update global control variates
     c_global_para = c_global.state_dict()
     for key in c_global_para:
         if c_global_para[key].type() == 'torch.LongTensor':
@@ -467,14 +526,18 @@ def local_train_net_scaffold(nets, selected, global_model, c_nets, c_global, arg
         elif c_global_para[key].type() == 'torch.cuda.LongTensor':
             c_global_para[key] += total_delta[key].type(torch.cuda.LongTensor)
         else:
-            #print(c_global_para[key].type())
             c_global_para[key] += total_delta[key]
     c_global.load_state_dict(c_global_para)
 
+    # Compute average metrics across all selected clients
     avg_acc /= len(selected)
-    if args.alg == 'local_training':
-        logger.info("avg test acc %f" % avg_acc)
+    avg_train_loss = total_train_loss / len(selected)
 
+    # Log average metrics
+    logger.info("Round Average Training Loss: %f" % avg_train_loss)
+    logger.info("Round Average Test Accuracy: %f" % avg_acc)
+
+    # Return the updated list of client models
     nets_list = list(nets.values())
     return nets_list
 
