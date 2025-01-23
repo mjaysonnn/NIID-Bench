@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Define variables for common parameters
-MODEL="simple-cnn"
-DATASET="cifar10"
-EPOCHS=25
 N_PARTIES=100
-COMM_ROUNDS=100
 SAMPLE=0.2
 BETA=0.5 # Dirichlet noise
+COMM_ROUNDS=500
+EPOCHS=5
 
+MODEL="simple-cnn"
+DATASET="cifar10"
 LR=0.01
 BATCH_SIZE=64
 RHO=0.9
@@ -17,8 +17,6 @@ DATADIR="./data/"
 LOGDIR_BASE="./logs"
 INIT_SEED=0
 NOISE=0.0 # Homo noise
-
-
 
 # Loop through partitions and algorithms
 for PARTITION in noniid-labeldir # noniid-labeldir, homo -> Update NOISE if using homo

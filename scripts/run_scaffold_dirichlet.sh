@@ -4,8 +4,8 @@
 N_PARTIES=100
 SAMPLE=0.2
 BETA=0.5 # Dirichlet noise
-COMM_ROUNDS=100
-EPOCHS=25
+COMM_ROUNDS=500
+EPOCHS=5
 
 MODEL="simple-cnn"
 DATASET="cifar10"
@@ -17,8 +17,6 @@ DATADIR="./data/"
 LOGDIR_BASE="./logs"
 INIT_SEED=0
 NOISE=0.0 # Homo noise
-
-
 
 # Loop through partitions and algorithms
 for PARTITION in noniid-labeldir # noniid-labeldir, homo -> Update NOISE if using homo
