@@ -9,10 +9,10 @@ ALG="fedavg"       # Federated learning algorithm (e.g., fedavg, scaffold)
 # Configuration Parameters
 N_PARTIES=100        # Total number of clients
 NUM_CLIENTS_P=20     # Number of regular clients
-NUM_CLIENTS_Q=5      # Number of partial update clients
+NUM_CLIENTS_Q=15      # Number of partial update clients
 
-COMM_ROUNDS=100      # Number of communication rounds
-EPOCHS=25            # Number of local epochs
+COMM_ROUNDS=500      # Number of communication rounds
+EPOCHS=5            # Number of local epochs
 
 # Model and Dataset Parameters
 MODEL="simple-cnn"
