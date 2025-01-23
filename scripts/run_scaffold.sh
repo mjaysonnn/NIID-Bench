@@ -20,7 +20,7 @@ INIT_SEED=0
 # Loop through partitions and algorithms
 for PARTITION in noniid-labeldir
 do
-    for ALG in fedavg
+    for ALG in scaffold
     do
         # Define specific log directory for this algorithm
         LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
