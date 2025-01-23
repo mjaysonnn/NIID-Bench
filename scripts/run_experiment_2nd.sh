@@ -4,12 +4,12 @@ PARTITION="noniid-labeldir"   # Data partition strategy (e.g., homo, noniid-labe
 BETA=0.5             # Dirichlet distribution parameter
 NOISE=0.1          # Noise value for homo
 
-ALG="scaffold"       # Federated learning algorithm (e.g., fedavg, scaffold)
+ALG="fedavg"       # Federated learning algorithm (e.g., fedavg, scaffold)
 
 # Configuration Parameters
 N_PARTIES=100        # Total number of clients
 NUM_CLIENTS_P=20     # Number of regular clients
-NUM_CLIENTS_Q=0      # Number of partial update clients
+NUM_CLIENTS_Q=10      # Number of partial update clients
 
 COMM_ROUNDS=100      # Number of communication rounds
 EPOCHS=25            # Number of local epochs
