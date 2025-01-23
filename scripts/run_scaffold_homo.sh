@@ -3,12 +3,11 @@
 # Define variables for common parameters
 MODEL="simple-cnn"
 DATASET="cifar10"
-EPOCHS=10
+EPOCHS=25
 N_PARTIES=100
-COMM_ROUNDS=500
-SAMPLE=0.1
+COMM_ROUNDS=100
+SAMPLE=0.2
 NOISE=0.1 # Homo noise
-BETA=0.5 # Dirichlet noise
 
 LR=0.01
 BATCH_SIZE=64
@@ -17,13 +16,14 @@ DEVICE="cuda:0"
 DATADIR="./data/"
 LOGDIR_BASE="./logs"
 INIT_SEED=0
+BETA=0.5 # Dirichlet noise
 
 
 
 # Loop through partitions and algorithms
 for PARTITION in homo # noniid-labeldir, homo -> Update NOISE if using homo
 do
-    for ALG in scaffold
+    for ALG in fedavg
     do
         # Define specific log directory for this algorithm
         LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
