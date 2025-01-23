@@ -23,7 +23,7 @@ BETA=0.5 # Dirichlet noise
 # Loop through partitions and algorithms
 for PARTITION in homo # noniid-labeldir, homo -> Update NOISE if using homo
 do
-    for ALG in fedavg
+    for ALG in scaffold
     do
         # Define specific log directory for this algorithm
         LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"

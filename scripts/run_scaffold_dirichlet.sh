@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Define variables for common parameters
-MODEL="simple-cnn"
-DATASET="cifar10"
-EPOCHS=25
 N_PARTIES=100
-COMM_ROUNDS=100
 SAMPLE=0.2
 BETA=0.5 # Dirichlet noise
+COMM_ROUNDS=100
+EPOCHS=25
 
+MODEL="simple-cnn"
+DATASET="cifar10"
 LR=0.01
 BATCH_SIZE=64
 RHO=0.9
@@ -23,7 +23,7 @@ NOISE=0.0 # Homo noise
 # Loop through partitions and algorithms
 for PARTITION in noniid-labeldir # noniid-labeldir, homo -> Update NOISE if using homo
 do
-    for ALG in fedavg
+    for ALG in scaffold
     do
         # Define specific log directory for this algorithm
         LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
