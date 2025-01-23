@@ -9,10 +9,10 @@ ALG="fedavg"       # Federated learning algorithm (e.g., fedavg, scaffold)
 # Configuration Parameters
 N_PARTIES=100        # Total number of clients
 NUM_CLIENTS_P=20     # Number of regular clients
-NUM_CLIENTS_Q=15      # Number of partial update clients
+NUM_CLIENTS_Q=20      # Number of partial update clients
 
 COMM_ROUNDS=500      # Number of communication rounds
-EPOCHS=5            # Number of local epochs
+EPOCHS=5      
 
 # Model and Dataset Parameters
 MODEL="simple-cnn"
@@ -50,7 +50,7 @@ echo "========================================"
 LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
 
 # Run the experiment
-python experiments.py \
+python experiments_spot.py \
     --model=$MODEL \
     --dataset=$DATASET \
     --alg=$ALG \
