@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Client Variables
-N_PARTIES=25  # Total number of clients
-NUM_CLIENTS_P=20  # Number of regular clients
-NUM_CLIENTS_Q=5   # Number of partial update clients
+N_PARTIES=100 # Total number of clients
+NUM_CLIENTS_P=10  # Number of regular clients
+NUM_CLIENTS_Q=0   # Number of partial update clients
 
 # Communication rounds
-COMM_ROUNDS=50
+COMM_ROUNDS=500
 
 # Local epochs
 EPOCHS=10
@@ -17,14 +17,22 @@ BETA=0.5
 
 
 MODEL="simple-cnn"
+
 DATASET="cifar10"
+
 LR=0.01
+
 BATCH_SIZE=64
+
 RHO=0.9
+
 DEVICE="cuda:0"
 DATADIR="./data/"
 LOGDIR_BASE="./logs"
-NOISE=0
+
+# Noise
+NOISE=0.1
+
 INIT_SEED=0
 
 # Calculate proportions
@@ -40,9 +48,9 @@ echo "Proportion of partial update clients (Q): $Q"
 echo "Client participation rate (SAMPLE): $SAMPLE"
 
 # Loop through partitions and algorithms
-for PARTITION in noniid-labeldir
+for PARTITION in homo
 do
-    for ALG in fedavg
+    for ALG in scaffold
     do
         # Define specific log directory for this algorithm
         LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
