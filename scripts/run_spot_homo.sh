@@ -58,7 +58,6 @@ python experiments_spot.py \
     --rho=$RHO \
     --comm_round=$COMM_ROUNDS \
     --partition=$PARTITION \
-    --beta=$BETA \
     --device=$DEVICE \
     --datadir=$DATADIR \
     --logdir=$LOGDIR \
