@@ -8,7 +8,7 @@ MODEL="simple-cnn"
 
 N_PARTIES=100
 NUM_P=20 # Number of regular clients
-NUM_Q=10  # Number of partial update clients
+NUM_Q=5  # Number of partial update clients
 
 PARTITION="noniid-labeldir" # Change to "homo" if needed
 BETA=0.5 # Dirichlet noise
@@ -17,8 +17,8 @@ BETA=0.5 # Dirichlet noise
 # PARTITION="homo" # Change to "homo" if needed
 # NOISE=0.1 # Homo noise -> use 0.0 if homo
 
-COMM_ROUNDS=100
-EPOCHS=25
+COMM_ROUNDS=500
+EPOCHS=5
 
 LR=0.01
 BATCH_SIZE=64
