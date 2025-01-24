@@ -582,9 +582,9 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, devic
     clients_p = selected[:num_clients_p]
     clients_q = selected[num_clients_p:]
 
-    logger.info("Number of total clients: %d" % len(selected))
-    logger.info("Number of clients in group `p`: %d" % len(clients_p))
-    logger.info("Number of clients in group `q`: %d" % len(clients_q))
+    # logger.info("Number of total clients: %d" % len(selected))
+    # logger.info("Number of clients in group `p`: %d" % len(clients_p))
+    # logger.info("Number of clients in group `q`: %d" % len(clients_q))
 
     # Loop through each client model in the dictionary
     for net_id, net in nets.items():
@@ -901,6 +901,11 @@ if __name__ == '__main__':
 
     if args.alg == 'fedavg':
         logger.info("Initializing nets")
+        logger.info("Number of parties: %d" % args.n_parties)
+        logger.info("Number of p groups: %d" % int(args.n_parties * args.p))
+        logger.info("Number of q groups: %d" % int(args.n_parties * args.q))
+        logger.info("Sampled number of parties: %d" % int(args.n_parties * args.sample))
+        
         nets, local_model_meta_data, layer_type = init_nets(args.net_config, args.dropout_p, args.n_parties, args)
         global_models, global_model_meta_data, global_layer_type = init_nets(args.net_config, 0, 1, args)
         global_model = global_models[0]
