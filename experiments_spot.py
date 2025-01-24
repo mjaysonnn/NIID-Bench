@@ -562,10 +562,31 @@ def view_image(train_dataloader):
         print(x.shape)
         exit(0)
 
+def truncated_poisson(lam, min_val=1):
+    """Generate a sample from a truncated Poisson distribution."""
+    while True:
+        sample = np.random.poisson(lam)
+        if sample >= min_val:
+            return sample
+            
 
 def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, device="cpu"):
-    avg_acc = 0.0
+    avg_acc = 0.0  # Variable to store the average test accuracy.
 
+    # Calculate the number of clients in `p` and `q` groups based on `args.n_parties`
+    num_clients_p = int(args.n_parties * args.p)
+
+
+    # Randomly shuffle selected clients and assign them to `p` and `q` groups
+    np.random.shuffle(selected)
+    clients_p = selected[:num_clients_p]
+    clients_q = selected[num_clients_p:]
+
+    logger.info("Number of total clients: %d" % len(selected))
+    logger.info("Number of clients in group `p`: %d" % len(clients_p))
+    logger.info("Number of clients in group `q`: %d" % len(clients_q))
+
+    # Loop through each client model in the dictionary
     for net_id, net in nets.items():
         if net_id not in selected:
             continue
@@ -585,8 +606,15 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, devic
             noise_level = args.noise / (args.n_parties - 1) * net_id
             train_dl_local, test_dl_local, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level)
         train_dl_global, test_dl_global, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32)
-        n_epoch = args.epochs
+        
 
+        # Determine the number of epochs for training
+        if net_id in clients_q:  # Clients in group `q`
+            n_epoch = min(truncated_poisson(args.epochs), args.epochs)
+            logger.info("Client %d performing partial updates with %d epochs" % (net_id, n_epoch))
+        else:  # Clients in group `p`
+            n_epoch = args.epochs
+            logger.info("Client %d performing full updates with %d epochs" % (net_id, n_epoch))
 
         trainacc, testacc = train_net(net_id, net, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, device=device)
         logger.info("net %d final test acc %f" % (net_id, testacc))
