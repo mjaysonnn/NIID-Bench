@@ -1,14 +1,25 @@
 #!/bin/bash
 
-# Define variables for common parameters
-N_PARTIES=100
-SAMPLE=0.2
-BETA=0.5 # Dirichlet noise
-COMM_ROUNDS=500
-EPOCHS=5
+ALG="fedavg" # Change to other algorithms if needed
 
-MODEL="simple-cnn"
+# Define variables for common parameters
 DATASET="cifar10"
+MODEL="simple-cnn"
+
+N_PARTIES=100
+NUM_P=10 # Number of regular clients
+NUM_Q=5  # Number of partial update clients
+
+PARTITION="noniid-labeldir" # Change to "homo" if needed
+BETA=0.5 # Dirichlet noise
+
+# Comment if using noniid-labeldir
+# PARTITION="homo" # Change to "homo" if needed
+# NOISE=0.1 # Homo noise -> use 0.0 if homo
+
+COMM_ROUNDS=500
+EPOCHS=10
+
 LR=0.01
 BATCH_SIZE=64
 RHO=0.9
@@ -16,34 +27,42 @@ DEVICE="cuda:0"
 DATADIR="./data/"
 LOGDIR_BASE="./logs"
 INIT_SEED=0
-NOISE=0.0 # Homo noise
 
-# Loop through partitions and algorithms
-for PARTITION in noniid-labeldir # noniid-labeldir, homo -> Update NOISE if using homo
-do
-    for ALG in fedavg
-    do
-        # Define specific log directory for this algorithm
-        LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
+# Calculate proportions dynamically based on NUM_P and NUM_Q
+P=$(echo "$NUM_P / $N_PARTIES" | bc -l) # Proportion of regular clients
+Q=$(echo "$NUM_Q / $N_PARTIES" | bc -l) # Proportion of partial update clients
+SAMPLE=$(echo "($NUM_P + $NUM_Q) / $N_PARTIES" | bc -l) # Total participation rate
 
-        # Run the experiment
-        python experiments_baseline.py \
-            --model=$MODEL \
-            --dataset=$DATASET \
-            --alg=$ALG \
-            --lr=$LR \
-            --batch-size=$BATCH_SIZE \
-            --epochs=$EPOCHS \
-            --n_parties=$N_PARTIES \
-            --rho=$RHO \
-            --comm_round=$COMM_ROUNDS \
-            --partition=$PARTITION \
-            --beta=$BETA \
-            --device=$DEVICE \
-            --datadir=$DATADIR \
-            --logdir=$LOGDIR \
-            --noise=$NOISE \
-            --sample=$SAMPLE \
-            --init_seed=$INIT_SEED
-    done
-done
+echo "Total clients: $N_PARTIES"
+echo "Number of regular clients: $NUM_P"
+echo "Number of partial update clients: $NUM_Q"
+echo "Proportion of regular clients (P): $P"
+echo "Proportion of partial update clients (Q): $Q"
+echo "Total participation rate (SAMPLE): $SAMPLE"
+echo "Partition Type: $PARTITION"
+echo "Algorithm: $ALG"
+
+# Define specific log directory for this algorithm
+LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
+
+# Run the experiment
+python experiments_spot.py \
+    --model=$MODEL \
+    --dataset=$DATASET \
+    --alg=$ALG \
+    --lr=$LR \
+    --batch-size=$BATCH_SIZE \
+    --epochs=$EPOCHS \
+    --n_parties=$N_PARTIES \
+    --rho=$RHO \
+    --comm_round=$COMM_ROUNDS \
+    --partition=$PARTITION \
+    --beta=$BETA \
+    --device=$DEVICE \
+    --datadir=$DATADIR \
+    --logdir=$LOGDIR \
+    --noise=$NOISE \
+    --sample=$SAMPLE \
+    --init_seed=$INIT_SEED \
+    --p=$P \
+    --q=$Q
