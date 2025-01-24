@@ -61,7 +61,6 @@ python experiments_spot.py \
     --device=$DEVICE \
     --datadir=$DATADIR \
     --logdir=$LOGDIR \
-    --noise=$NOISE \
     --sample=$SAMPLE \
     --init_seed=$INIT_SEED \
     --p=$P \
