@@ -3,11 +3,16 @@
 # Define variables for common parameters
 MODEL="simple-cnn"
 DATASET="cifar10"
-EPOCHS=25
+
 N_PARTIES=100
-COMM_ROUNDS=100
-SAMPLE=0.2
-NOISE=0.1 # Homo noise
+NUM_P=10 # Number of regular clients
+NUM_Q=5 # Number of partial update clients
+
+BETA=0.5 # Dirichlet noise
+NOISE=0.1 # Homo noise (comment if using dirichlet)
+
+COMM_ROUNDS=500
+EPOCHS=10
 
 LR=0.01
 BATCH_SIZE=64
@@ -16,8 +21,19 @@ DEVICE="cuda:0"
 DATADIR="./data/"
 LOGDIR_BASE="./logs"
 INIT_SEED=0
-BETA=0.5 # Dirichlet noise
 
+
+# Calculate proportions dynamically based on NUM_P and NUM_Q
+P=$(echo "$NUM_P / $N_PARTIES" | bc -l) # Proportion of regular clients
+Q=$(echo "$NUM_Q / $N_PARTIES" | bc -l) # Proportion of partial update clients
+SAMPLE=$(echo "($NUM_P + $NUM_Q) / $N_PARTIES" | bc -l) # Total participation rate
+
+echo "Total clients: $N_PARTIES"
+echo "Number of regular clients: $NUM_P"
+echo "Number of partial update clients: $NUM_Q"
+echo "Proportion of regular clients (P): $P"
+echo "Proportion of partial update clients (Q): $Q"
+echo "Total participation rate (SAMPLE): $SAMPLE"
 
 
 # Loop through partitions and algorithms
@@ -29,7 +45,7 @@ do
         LOGDIR="$LOGDIR_BASE/$MODEL/$ALG/$PARTITION/"
 
         # Run the experiment
-        python experiments_baseline.py \
+        python experiments_spot.py \
             --model=$MODEL \
             --dataset=$DATASET \
             --alg=$ALG \
@@ -46,6 +62,8 @@ do
             --logdir=$LOGDIR \
             --noise=$NOISE \
             --sample=$SAMPLE \
-            --init_seed=$INIT_SEED
+            --init_seed=$INIT_SEED \
+            --p=$P \
+            --q=$Q
     done
 done
