@@ -17,9 +17,10 @@ DATADIR="./data/"
 LOGDIR_BASE="./logs"
 INIT_SEED=0
 
-# BETA=0.5 # Dirichlet noise
+P=0.8 # Proportion of regular clients
+Q=0.2 # Proportion of clients doing partial updates
 
-
+# BETA=0.5 # Uncomment if using Dirichlet distribution for non-iid partitioning
 
 # Loop through partitions and algorithms
 for PARTITION in homo # noniid-labeldir, homo -> Update NOISE if using homo
@@ -47,6 +48,8 @@ do
             --logdir=$LOGDIR \
             --noise=$NOISE \
             --sample=$SAMPLE \
-            --init_seed=$INIT_SEED
+            --init_seed=$INIT_SEED \
+            --p=$P \
+            --q=$Q
     done
 done
