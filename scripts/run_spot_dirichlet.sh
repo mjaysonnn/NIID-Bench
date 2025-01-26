@@ -4,19 +4,19 @@ ALG="fedavg" # Change to other algorithms if needed
 
 # Define variables for common parameters
 DATASET="cifar10"
-MODEL="simple-cnn"
+MODEL="vgg"
 
-N_PARTIES=100
-NUM_P=20 # Number of regular clients
-NUM_Q=15  # Number of partial update clients
+N_PARTIES=15
+NUM_P=10 # Number of regular clients
+NUM_Q=5  # Number of partial update clients
 
 PARTITION="noniid-labeldir" # Change to "homo" if needed
 BETA=0.5 # Dirichlet noise
 
-COMM_ROUNDS=500
-EPOCHS=5
+COMM_ROUNDS=100
+EPOCHS=10
 
-LR_LIST=(0.001 0.1 1) # List of learning rates
+LR_LIST=(0.01) # List of learning rates
 
 BATCH_SIZE=64
 RHO=0.9
