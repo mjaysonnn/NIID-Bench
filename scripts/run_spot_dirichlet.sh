@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ALG="scaffold" # Change to other algorithms if needed
+ALG="fedavg" # Change to other algorithms if needed
 
 # Define variables for common parameters
 DATASET="cifar10"
