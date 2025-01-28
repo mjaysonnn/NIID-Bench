@@ -570,21 +570,16 @@ def truncated_poisson(lam, min_val=1):
             return sample
             
 
-def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, device="cpu"):
+def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device="cpu"):
     avg_acc = 0.0  # Variable to store the average test accuracy.
 
     # Calculate the number of clients in `p` and `q` groups based on `args.n_parties`
     num_clients_p = int(args.n_parties * args.p)
 
-
     # Randomly shuffle selected clients and assign them to `p` and `q` groups
     np.random.shuffle(selected)
     clients_p = selected[:num_clients_p]
     clients_q = selected[num_clients_p:]
-
-    # logger.info("Number of total clients: %d" % len(selected))
-    # logger.info("Number of clients in group `p`: %d" % len(clients_p))
-    # logger.info("Number of clients in group `q`: %d" % len(clients_q))
 
     # Loop through each client model in the dictionary
     for net_id, net in nets.items():
@@ -592,8 +587,13 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, devic
             continue
         dataidxs = net_dataidx_map[net_id]
 
+        # Skip training for clients in `clients_q` if `args.epochs == 1`
+        if args.epochs == 1 and net_id in clients_q:
+            logger.info(f"Skipping training for net {net_id} as it belongs to clients_q and args.epochs == 1.")
+            continue
+
         logger.info("Training network %s. n_training: %d" % (str(net_id), len(dataidxs)))
-        # move the model to cuda device:
+        # Move the model to the specified device
         net.to(device)
 
         noise_level = args.noise
@@ -601,12 +601,15 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, devic
             noise_level = 0
 
         if args.noise_type == 'space':
-            train_dl_local, test_dl_local, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level, net_id, args.n_parties-1)
+            train_dl_local, test_dl_local, _, _ = get_dataloader(
+                args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level, net_id, args.n_parties - 1
+            )
         else:
             noise_level = args.noise / (args.n_parties - 1) * net_id
-            train_dl_local, test_dl_local, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level)
+            train_dl_local, test_dl_local, _, _ = get_dataloader(
+                args.dataset, args.datadir, args.batch_size, 32, dataidxs, noise_level
+            )
         train_dl_global, test_dl_global, _, _ = get_dataloader(args.dataset, args.datadir, args.batch_size, 32)
-        
 
         # Determine the number of epochs for training
         if net_id in clients_q:  # Clients in group `q`
@@ -619,10 +622,7 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl = None, devic
         trainacc, testacc = train_net(net_id, net, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, device=device)
         logger.info("net %d final test acc %f" % (net_id, testacc))
         avg_acc += testacc
-        # saving the trained models here
-        # save_model(net, net_id, args)
-        # else:
-        #     load_model(net, net_id, device=device)
+
     avg_acc /= len(selected)
     if args.alg == 'local_training':
         logger.info("avg test acc %f" % avg_acc)
