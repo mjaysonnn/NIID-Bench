@@ -13,8 +13,8 @@ NUM_Q=0  # Number of partial update clients
 PARTITION="noniid-labeldir" # Change to "homo" if needed
 BETA=0.5 # Dirichlet noise
 
-COMM_ROUNDS=500
 EPOCHS=1
+COMM_ROUNDS=250
 
 LR_LIST=(0.01) # List of learning rates
 
