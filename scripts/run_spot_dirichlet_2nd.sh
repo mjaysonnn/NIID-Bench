@@ -8,13 +8,13 @@ MODEL="simple-cnn"
 
 N_PARTIES=100
 NUM_P=20 # Number of regular clients
-NUM_Q=20  # Number of partial update clients
+NUM_Q=10  # Number of partial update clients
 
 PARTITION="noniid-labeldir" # Change to "homo" if needed
 BETA=0.5 # Dirichlet noise
 
-COMM_ROUNDS=50
-EPOCHS=10
+COMM_ROUNDS=500
+EPOCHS=1
 
 LR_LIST=(0.01) # List of learning rates
 
