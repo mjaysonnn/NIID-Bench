@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ALG="fedavg" # Change to other algorithms if needed
+ALG="scaffold" # Change to other algorithms if needed
 
 # Define variables for common parameters
 DATASET="cifar10"
@@ -14,7 +14,7 @@ PARTITION="noniid-labeldir" # Change to "homo" if needed
 BETA=0.5 # Dirichlet noise
 
 EPOCHS=5
-COMM_ROUNDS=50
+COMM_ROUNDS=100
 
 LR_LIST=(0.01) # List of learning rates
 
