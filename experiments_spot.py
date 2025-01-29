@@ -614,10 +614,10 @@ def local_train_net(nets, selected, args, net_dataidx_map, test_dl=None, device=
         # Determine the number of epochs for training
         if net_id in clients_q:  # Clients in group `q`
             n_epoch = min(truncated_poisson(args.epochs), args.epochs)
-            logger.info("Client %d performing partial updates with %d epochs" % (net_id, n_epoch))
+            # logger.info("Client %d performing partial updates with %d epochs" % (net_id, n_epoch))
         else:  # Clients in group `p`
             n_epoch = args.epochs
-            logger.info("Client %d performing full updates with %d epochs" % (net_id, n_epoch))
+            # logger.info("Client %d performing full updates with %d epochs" % (net_id, n_epoch))
 
         trainacc, testacc = train_net(net_id, net, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, device=device)
         logger.info("net %d final test acc %f" % (net_id, testacc))
