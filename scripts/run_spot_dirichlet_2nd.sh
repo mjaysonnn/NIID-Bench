@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ALG="scaffold" # Change to other algorithms if needed
+ALG="fedavg" # Change to other algorithms if needed
 
 # Define variables for common parameters
 DATASET="cifar10"
@@ -8,15 +8,15 @@ MODEL="simple-cnn"
 
 N_PARTIES=100
 NUM_P=20 # Number of regular clients
-NUM_Q=0  # Number of partial update clients
+NUM_Q=15  # Number of partial update clients
 
 # PARTITION="noniid-labeldir" # Change to "homo" if needed
-BETA=0.5 # Dirichlet noise (but not used) 
+BETA=0.5 # Dirichlet noise
 
 PARTITION="homo"
 
-EPOCHS=1
-COMM_ROUNDS=500
+EPOCHS=10
+COMM_ROUNDS=50
 
 LR_LIST=(0.01) # List of learning rates
 
