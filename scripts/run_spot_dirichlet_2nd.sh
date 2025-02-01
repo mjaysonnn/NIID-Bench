@@ -10,11 +10,13 @@ N_PARTIES=100
 NUM_P=20 # Number of regular clients
 NUM_Q=0  # Number of partial update clients
 
-PARTITION="noniid-labeldir" # Change to "homo" if needed
-BETA=0.5 # Dirichlet noise
+# PARTITION="noniid-labeldir" # Change to "homo" if needed
+BETA=0.5 # Dirichlet noise (but not used) 
 
-EPOCHS=5
-COMM_ROUNDS=50
+PARTITION="homo"
+
+EPOCHS=1
+COMM_ROUNDS=500
 
 LR_LIST=(0.01) # List of learning rates
 
