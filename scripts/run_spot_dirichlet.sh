@@ -15,8 +15,8 @@ BETA=0.5 # Dirichlet noise (but not used)
 
 PARTITION="homo"
 
-EPOCHS=1
-COMM_ROUNDS=500
+EPOCHS=2
+COMM_ROUNDS=250
 
 LR_LIST=(0.01) # List of learning rates
 
