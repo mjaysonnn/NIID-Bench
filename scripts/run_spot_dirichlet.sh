@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ALG="scaffold" # Change to other algorithms if needed
+ALG="fedavg" # Change to other algorithms if needed
 
 # Define variables for common parameters
 DATASET="cifar10"
@@ -8,7 +8,7 @@ MODEL="resnet"
 
 N_PARTIES=100
 NUM_P=20 # Number of regular clients
-NUM_Q=0  # Number of partial update clients
+NUM_Q=5  # Number of partial update clients
 
 PARTITION="noniid-labeldir" # Change to "homo" if needed
 BETA=0.5 # Dirichlet noise (but not used, if using homo)
