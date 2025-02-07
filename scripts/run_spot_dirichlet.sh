@@ -4,7 +4,7 @@ ALG="fedavg" # Change to other algorithms if needed
 
 # Define variables for common parameters
 DATASET="cifar10"
-MODEL="resnet18"
+MODEL="resnet"
 
 N_PARTIES=100
 NUM_P=20 # Number of regular clients
