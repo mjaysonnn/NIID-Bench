@@ -133,7 +133,7 @@ def init_nets(net_configs, dropout_p, n_parties, args):
                     elif args.dataset == 'celeba':
                         net = ModerateCNN(output_dim=2)
                 elif args.model == "resnet":
-                    net = ResNet50_cifar10()
+                    net = ResNet18_cifar10()
                 elif args.model == "vgg16":
                     net = vgg16()
                 else:
