@@ -8,15 +8,15 @@ MODEL="resnet"
 
 N_PARTIES=100
 NUM_P=20 # Number of regular clients
-NUM_Q=20  # Number of partial update clients
+NUM_Q=0  # Number of partial update clients
 
 PARTITION="noniid-labeldir" # Change to "homo" if needed
 BETA=0.5 # Dirichlet noise (but not used, if using homo)
 
 # PARTITION="homo"
 
-EPOCHS=1
-COMM_ROUNDS=2500
+EPOCHS=2
+COMM_ROUNDS=1250
 
 LR_LIST=(0.01) # List of learning rates
 
